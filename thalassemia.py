@@ -67,11 +67,11 @@ def process_thalassemia_excel(file_path, output_dir):
 
         id_clean = filename_cleanup(str(row[2]))
         name_clean = filename_cleanup(str(row[3]))
-        if mutation_part:
+        """ if mutation_part:
             output_name = f"{id_clean}_{name_clean}_{mutation_part}_Thalassemia"
         else:
-            output_name = f"{id_clean}_{name_clean}_Thalassemia"
-        output_name = filename_cleanup(output_name)
+            output_name = f"{id_clean}_{name_clean}_Thalassemia" """
+        output_name = filename_cleanup(name_clean)
 
         output_path = render_report("Thalassemia", context, output_name, output_dir)
         phrases = [

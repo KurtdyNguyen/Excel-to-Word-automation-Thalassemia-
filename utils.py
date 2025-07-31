@@ -19,7 +19,6 @@ TEMPLATES = {
 def filename_cleanup(s: str) -> str:
     s = re.sub(r'[<>:"/\\|?*]', '', s)
     s = s.replace('α', 'a').replace('Α', 'A')
-    s = s.replace(' ', '_')
     s = s.replace('(', '').replace(')', '')
     return s
 
