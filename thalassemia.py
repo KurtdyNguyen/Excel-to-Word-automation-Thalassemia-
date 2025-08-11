@@ -2,8 +2,11 @@ import os
 import pandas as pd
 from datetime import datetime
 from utils import (
-    filename_cleanup, extract_mutation_label, render_report,
-    highlight_mutation_phrases, extract_red_phrase
+    filename_cleanup,
+    extract_mutation_label,
+    render_report,
+    highlight_mutation_phrases,
+    extract_red_phrase
 )
 
 def alpha_result(result: str, name: str) -> str:
@@ -44,7 +47,15 @@ def beta_result(result: str, name: str) -> str:
 
     else:
         return f"Nghi vấn có đột biến trên gen HBB: {result}"
-    
+
+def clean_yob(yob):
+    if pd.isna(yob):
+        return ""
+    try:
+        return str(int(float(yob)))
+    except(ValueError, TypeError):
+        return ""
+
 def process_thalassemia_excel(file_path, output_dir):
     from datetime import datetime
     df = pd.read_excel(file_path, header=None)
@@ -54,7 +65,7 @@ def process_thalassemia_excel(file_path, output_dir):
         context = {
             "ID": row[2],
             "name": row[3],
-            "yob": row[4],
+            "yob": clean_yob(row[4]),
             "alpha_mutation_result": alpha_result(row[18], row[3]),
             "beta_mutation_result": beta_result(row[19], row[3]),
             "date": str(today.day),

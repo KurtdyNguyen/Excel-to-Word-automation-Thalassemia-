@@ -1,5 +1,6 @@
 import os
 from docxtpl import DocxTemplate
+from docxtpl import RichText
 from docx import Document
 from docx.shared import RGBColor, Pt
 import re
@@ -34,7 +35,7 @@ def extract_mutation_label(text: str) -> str:
             return match.group(1).strip().upper()
     return ""
 
-def render_report(template_type, context, output_name, output_dir, embryos = None):
+def render_report(template_type, context, output_name, output_dir, embryos = None):    
     config = TEMPLATES.get(template_type)
     if not config:
         raise FileNotFoundError(f"Không tìm thấy template cho {template_type}")
@@ -53,41 +54,66 @@ def highlight_mutation_phrases(docx_path, phrases, color=(255, 0, 0), normal_col
     doc = Document(docx_path)
     red = RGBColor(*color)
     blue = RGBColor(*normal_color)
+    
+    def add_styled_run(paragraph, text, font_color, italic=False, superscript=False):
+        run = paragraph.add_run(text)
+        run.font.color.rgb = font_color
+        run.font.name = 'Times New Roman'
+        run.font.size = Pt(13)
+        run.font.bold = True
+        run.italic = italic
+        run.font.superscript = superscript
+        return run
+    
+    def add_blue_with_italics(paragraph, text):
+        parts = re.split(r"(?i)(HBA|HBB)", text)
+        for part in parts:
+            if not part:
+                continue
+            if re.fullmatch(r"(?i)HBA|HBB", part):
+                add_styled_run(paragraph, part.upper(), blue, italic=True)
+            else:
+                add_styled_run(paragraph, part, blue, italic=False)
 
     for para in doc.paragraphs:
+        match_found = False
         for phrase in phrases:
-            if phrase.lower() in para.text.lower():
+            if phrase in para.text:
+                match_found = True
                 full_text = para.text
-                start = full_text.lower().find(phrase.lower())
-                end = start + len(phrase)
-                before = full_text[:start]
-                match = full_text[start:end]
-                after = full_text[end:]
                 para.clear()
-
                 before, match, after = full_text.partition(phrase)
+                #special case, for "SEA" superscript
+                if "--SEA/αα" in full_text:
+                    
+                    if before:
+                        add_blue_with_italics(para, before)
 
-                if before:
-                    run_before = para.add_run(before)
-                    run_before.font.color.rgb = blue
-                    run_before.font.name = 'Times New Roman'
-                    run_before.font.size = Pt(13)
-                    run_before.font.bold = True
-
-                run_match = para.add_run(match)
-                run_match.font.color.rgb = red
-                run_match.font.name = 'Times New Roman'
-                run_match.font.size = Pt(13)
-                run_match.font.bold = True
+                    first_sea_index = match.find("SEA")
+                    if first_sea_index != -1:
+                        add_styled_run(para, match[:first_sea_index], red)
+                        add_styled_run(para, "SEA", red)
+                        
+                    second_sea_index = match.find("SEA", first_sea_index + 3)
+                    if second_sea_index != -1:
+                        add_styled_run(para, match[first_sea_index + 3:second_sea_index], red)
+                        add_styled_run(para, "SEA", red, superscript=True)
+                        add_styled_run(para, match[second_sea_index + 3:], red)
+                    else:
+                        add_styled_run(para, match[first_sea_index + 3:], red)
+                else:
+                    if before:
+                        add_blue_with_italics(para, before)
+                    add_styled_run(para, match, red)
 
                 if after:
-                    run_after = para.add_run(after)
-                    run_after.font.color.rgb = blue
-                    run_after.font.name = 'Times New Roman'
-                    run_after.font.size = Pt(13)
-                    run_after.font.bold = True
+                    add_blue_with_italics(para, after)
                 break
-
+        
+        if not match_found:
+            full_text = para.text
+            para.clear()
+            add_blue_with_italics(para, full_text)
     doc.save(docx_path)
 
 def extract_red_phrase(sentence: str) -> str:
@@ -100,4 +126,3 @@ def extract_red_phrase(sentence: str) -> str:
         end = sentence.find("trên gen", start)
         return sentence[start:end].strip()
     return ""
-
